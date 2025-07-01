@@ -12,8 +12,7 @@ body {
   background: url('../public/estrellas.gif');
   background-size: 200% 200%;
   color: #fff;
-  transition: background 0.5s ease-in-out;
-  animation: gradientMove 15s ease infinite;
+  animation: gradientMove 60s ease infinite;
 }
 
 @keyframes gradientMove {
