@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Container,
   TextField,
@@ -8,6 +8,8 @@ import {
   CardMedia,
   CircularProgress,
   CssBaseline,
+  Modal,
+  Box,
 } from '@mui/material';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { motion } from 'framer-motion';
@@ -38,6 +40,20 @@ export default function App() {
   const [answer, setAnswer] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [history, setHistory] = useState([]);
+  const [filter, setFilter] = useState('all');
+  const [openModal, setOpenModal] = useState(false);
+
+  // Load history from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('magic8-history');
+    if (saved) setHistory(JSON.parse(saved));
+  }, []);
+
+  // Save history to localStorage
+  useEffect(() => {
+    localStorage.setItem('magic8-history', JSON.stringify(history));
+  }, [history]);
 
   const validateQuestion = (q) => {
     const trimmed = q.trim();
@@ -62,17 +78,30 @@ export default function App() {
     try {
       const response = await axios.get('https://yesno.wtf/api');
       setAnswer(response.data);
+      setQuestion('');
+
+      setHistory((prevHistory) => [
+        { question: question.trim(), answer: response.data.answer },
+        ...prevHistory,
+      ]);
     } catch {
       setAnswer({
         answer: 'Error',
         image: '',
         message: 'Ups... No pude consultar la bola mágica.',
       });
+      setHistory((prevHistory) => [
+        { question: question.trim(), answer: 'Error' },
+        ...prevHistory,
+      ]);
     } finally {
       setLoading(false);
     }
   };
 
+  const filteredHistory = history.filter(
+    (entry) => filter === 'all' || entry.answer.toLowerCase() === filter
+  );
 
   return (
     <ThemeProvider theme={theme}>
@@ -90,33 +119,49 @@ export default function App() {
           onChange={(e) => setQuestion(e.target.value)}
           error={Boolean(error)}
           helperText={error || 'Termina con ? o ¿ ?'}
-          sx={{
-            bgcolor: '#fff',
-            borderRadius: 1,
-            mb: 2,
-          }}
+          sx={{ bgcolor: '#fff', borderRadius: 1, mb: 2 }}
         />
 
-        <Button
-          variant="contained"
-          onClick={handleSubmit}
-          disabled={loading}
-          sx={{
-            mb: 4,
-            bgcolor: '#FF4081',
-            color: '#fff',
-            fontWeight: 'bold',
-            fontSize: '1.2rem',
-            px: 4,
-            py: 1.5,
-            borderRadius: 8,
-            '&:hover': {
-              bgcolor: '#F50057',
-            },
-          }}
-        >
-          {loading ? 'Consultando...' : 'Preguntar 🔮'}
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', mb: 4 }}>
+          <Button
+            variant="contained"
+            onClick={handleSubmit}
+            disabled={loading}
+            sx={{
+              bgcolor: '#FF4081',
+              color: '#fff',
+              fontWeight: 'bold',
+              fontSize: '1.2rem',
+              px: 4,
+              py: 1.5,
+              borderRadius: 8,
+              '&:hover': {
+                bgcolor: '#F50057',
+              },
+            }}
+          >
+            {loading ? 'Consultando...' : 'Preguntar 🔮'}
+          </Button>
+
+          <Button
+            variant="outlined"
+            onClick={() => setOpenModal(true)}
+            sx={{
+              borderColor: '#fff',
+              color: '#fff',
+              fontWeight: 'bold',
+              px: 3,
+              py: 1.5,
+              borderRadius: 8,
+              '&:hover': {
+                bgcolor: '#fff',
+                color: '#000',
+              },
+            }}
+          >
+            Ver Historial
+          </Button>
+        </Box>
 
         {loading && (
           <>
@@ -126,6 +171,7 @@ export default function App() {
             </Typography>
           </>
         )}
+
         {answer && !loading && (
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
@@ -150,11 +196,7 @@ export default function App() {
                   boxShadow: 10,
                 }}
               >
-                <CardMedia
-                  component="img"
-                  image={answer.image}
-                  alt={answer.answer}
-                />
+                <CardMedia component="img" image={answer.image} alt={answer.answer} />
               </Card>
             )}
 
@@ -165,6 +207,73 @@ export default function App() {
             )}
           </motion.div>
         )}
+
+        <Modal open={openModal} onClose={() => setOpenModal(false)}>
+          <Box
+            sx={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: '90%',
+              maxWidth: 500,
+              bgcolor: '#121212',
+              color: '#fff',
+              borderRadius: 4,
+              boxShadow: 24,
+              p: 4,
+              maxHeight: '80vh',
+              overflowY: 'auto',
+            }}
+          >
+            <Typography variant="h5" gutterBottom>
+              Historial
+            </Typography>
+
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+              {['all', 'yes', 'no', 'maybe', 'error'].map((type) => (
+                <Button
+                  key={type}
+                  variant={filter === type ? 'contained' : 'outlined'}
+                  onClick={() => setFilter(type)}
+                  size="small"
+                  sx={{
+                    textTransform: 'capitalize',
+                    bgcolor: filter === type ? getColor(type) : '#fff',
+                    color: '#000',
+                    borderColor: getColor(type),
+                    '&:hover': {
+                      bgcolor: getColor(type),
+                      color: '#000',
+                    },
+                  }}
+                >
+                  {type === 'all' ? 'Todas' : type.charAt(0).toUpperCase() + type.slice(1)}
+                </Button>
+              ))}
+            </Box>
+
+            {filteredHistory.map((entry, index) => (
+              <Card
+                key={index}
+                sx={{
+                  bgcolor: '#1e1e1e',
+                  color: '#fff',
+                  mb: 2,
+                  p: 2,
+                  borderLeft: `8px solid ${getColor(entry.answer)}`,
+                }}
+              >
+                <Typography variant="body1">
+                  <strong>Pregunta:</strong> {entry.question}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Respuesta:</strong> {entry.answer.toUpperCase()}
+                </Typography>
+              </Card>
+            ))}
+          </Box>
+        </Modal>
       </Container>
     </ThemeProvider>
   );
