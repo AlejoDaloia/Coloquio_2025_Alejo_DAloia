@@ -231,7 +231,7 @@ export default function App() {
             </Typography>
 
             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
-              {['all', 'yes', 'no', 'maybe', 'error'].map((type) => (
+              {['all', 'yes', 'no', 'maybe'].map((type) => (
                 <Button
                   key={type}
                   variant={filter === type ? 'contained' : 'outlined'}
